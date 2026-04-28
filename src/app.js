@@ -1,6 +1,8 @@
 const express = require('express');
 
+const authRoutes = require('./routes/auth.routes');
 const statusRoutes = require('./routes/status.routes');
+const { errorHandler } = require('./middleware/error.middleware');
 
 function createApp() {
   const app = express();
@@ -8,6 +10,9 @@ function createApp() {
   app.use(express.json());
 
   app.use('/api', statusRoutes);
+  app.use('/auth', authRoutes);
+
+  app.use(errorHandler);
 
   return app;
 }
