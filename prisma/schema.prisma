@@ -54,9 +54,39 @@ model PoliceStation {
   name       String
   districtId Int
   district   District @relation(fields: [districtId], references: [id])
+  tukTuks    TukTuk[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([districtId])
+}
+
+model TukTuk {
+  id                Int             @id @default(autoincrement())
+  registrationNumber String          @unique
+  name              String?
+  policeStationId   Int
+  policeStation     PoliceStation   @relation(fields: [policeStationId], references: [id])
+  locations         Location[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([policeStationId])
+}
+
+model Location {
+  id         Int      @id @default(autoincrement())
+  tukTukId   Int
+  tukTuk     TukTuk   @relation(fields: [tukTukId], references: [id])
+  latitude   Float
+  longitude  Float
+  recordedAt DateTime @default(now())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tukTukId])
+  @@index([recordedAt])
 }

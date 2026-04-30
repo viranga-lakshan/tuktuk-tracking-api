@@ -1,0 +1,105 @@
+const {
+  createLocation,
+  createTukTuk,
+  listLiveLocations,
+  listLocationHistory,
+  listTukTuks,
+} = require('../services/tracking.service');
+
+async function createTukTukHandler(req, res, next) {
+  try {
+    const { registrationNumber, policeStationId, name } = req.body;
+
+    if (!registrationNumber || !policeStationId) {
+      return res.status(400).json({
+        message: 'registrationNumber and policeStationId are required',
+      });
+    }
+
+    const tukTuk = await createTukTuk({
+      registrationNumber,
+      policeStationId,
+      name,
+    });
+
+    return res.status(201).json({
+      message: 'TukTuk created successfully',
+      data: tukTuk,
+    });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+async function getTukTuksHandler(_req, res, next) {
+  try {
+    const tukTuks = await listTukTuks();
+
+    return res.status(200).json({
+      message: 'TukTuks fetched successfully',
+      data: tukTuks,
+    });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+async function createLocationHandler(req, res, next) {
+  try {
+    const { tukTukId, latitude, longitude, recordedAt } = req.body;
+
+    if (!tukTukId || latitude === undefined || longitude === undefined) {
+      return res.status(400).json({
+        message: 'tukTukId, latitude, and longitude are required',
+      });
+    }
+
+    const location = await createLocation({
+      tukTukId,
+      latitude: Number(latitude),
+      longitude: Number(longitude),
+      recordedAt,
+    });
+
+    return res.status(201).json({
+      message: 'Location recorded successfully',
+      data: location,
+    });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+async function getLiveLocationsHandler(_req, res, next) {
+  try {
+    const locations = await listLiveLocations();
+
+    return res.status(200).json({
+      message: 'Live locations fetched successfully',
+      data: locations,
+    });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+async function getLocationHistoryHandler(_req, res, next) {
+  try {
+    const locations = await listLocationHistory();
+
+    return res.status(200).json({
+      message: 'Location history fetched successfully',
+      data: locations,
+    });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+module.exports = {
+  createLocationHandler,
+  createTukTukHandler,
+  getLiveLocationsHandler,
+  getLocationHistoryHandler,
+  getTukTuksHandler,
+};
