@@ -33,11 +33,12 @@ async function createTukTukHandler(req, res, next) {
 
 async function getTukTuksHandler(_req, res, next) {
   try {
-    const tukTuks = await listTukTuks();
+    const result = await listTukTuks(_req.query);
 
     return res.status(200).json({
       message: 'TukTuks fetched successfully',
-      data: tukTuks,
+      data: result.data,
+      pagination: result.pagination,
     });
   } catch (error) {
     return next(error);
@@ -72,7 +73,7 @@ async function createLocationHandler(req, res, next) {
 
 async function getLiveLocationsHandler(_req, res, next) {
   try {
-    const locations = await listLiveLocations();
+    const locations = await listLiveLocations(_req.query);
 
     return res.status(200).json({
       message: 'Live locations fetched successfully',
@@ -85,11 +86,12 @@ async function getLiveLocationsHandler(_req, res, next) {
 
 async function getLocationHistoryHandler(_req, res, next) {
   try {
-    const locations = await listLocationHistory();
+    const result = await listLocationHistory(_req.query);
 
     return res.status(200).json({
       message: 'Location history fetched successfully',
-      data: locations,
+      data: result.data,
+      pagination: result.pagination,
     });
   } catch (error) {
     return next(error);

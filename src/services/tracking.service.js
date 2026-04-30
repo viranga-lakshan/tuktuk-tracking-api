@@ -1,5 +1,46 @@
 const prisma = require('../config/prisma');
 
+function parsePagination(page, limit) {
+  const parsedPage = Math.max(Number(page) || 1, 1);
+  const parsedLimit = Math.min(Math.max(Number(limit) || 20, 1), 100);
+
+  return {
+    page: parsedPage,
+    limit: parsedLimit,
+    skip: (parsedPage - 1) * parsedLimit,
+    take: parsedLimit,
+  };
+}
+
+function buildLocationWhere({ provinceId, districtId, tukTukId }) {
+  const where = {};
+
+  if (tukTukId) {
+    where.tukTukId = Number(tukTukId);
+  }
+
+  if (provinceId || districtId) {
+    where.tukTuk = {
+      policeStation: {
+        ...(districtId
+          ? {
+              districtId: Number(districtId),
+            }
+          : {}),
+        ...(provinceId
+          ? {
+              district: {
+                provinceId: Number(provinceId),
+              },
+            }
+          : {}),
+      },
+    };
+  }
+
+  return where;
+}
+
 async function createTukTuk({ registrationNumber, policeStationId, name }) {
   const policeStation = await prisma.policeStation.findUnique({
     where: { id: Number(policeStationId) },
@@ -33,29 +74,67 @@ async function createTukTuk({ registrationNumber, policeStationId, name }) {
   return tukTuk;
 }
 
-async function listTukTuks() {
-  return prisma.tukTuk.findMany({
-    include: {
-      policeStation: {
-        include: {
-          district: {
-            include: {
-              province: true,
+async function listTukTuks({ provinceId, districtId, page, limit }) {
+  const pagination = parsePagination(page, limit);
+  const where = {
+    ...(districtId || provinceId
+      ? {
+          policeStation: {
+            ...(districtId
+              ? {
+                  districtId: Number(districtId),
+                }
+              : {}),
+            ...(provinceId
+              ? {
+                  district: {
+                    provinceId: Number(provinceId),
+                  },
+                }
+              : {}),
+          },
+        }
+      : {}),
+  };
+
+  const [total, tukTuks] = await Promise.all([
+    prisma.tukTuk.count({ where }),
+    prisma.tukTuk.findMany({
+      where,
+      include: {
+        policeStation: {
+          include: {
+            district: {
+              include: {
+                province: true,
+              },
             },
           },
         },
-      },
-      locations: {
-        orderBy: {
-          createdAt: 'desc',
+        locations: {
+          orderBy: {
+            createdAt: 'desc',
+          },
+          take: 1,
         },
-        take: 1,
       },
+      orderBy: {
+        createdAt: 'desc',
+      },
+      skip: pagination.skip,
+      take: pagination.take,
+    }),
+  ]);
+
+  return {
+    data: tukTuks,
+    pagination: {
+      page: pagination.page,
+      limit: pagination.limit,
+      total,
+      totalPages: Math.max(Math.ceil(total / pagination.limit), 1),
     },
-    orderBy: {
-      createdAt: 'desc',
-    },
-  });
+  };
 }
 
 async function createLocation({ tukTukId, latitude, longitude, recordedAt }) {
@@ -82,8 +161,9 @@ async function createLocation({ tukTukId, latitude, longitude, recordedAt }) {
   });
 }
 
-async function listLiveLocations() {
+async function listLiveLocations({ provinceId, districtId, tukTukId }) {
   return prisma.location.findMany({
+    where: buildLocationWhere({ provinceId, districtId, tukTukId }),
     distinct: ['tukTukId'],
     orderBy: [
       { tukTukId: 'asc' },
@@ -107,27 +187,46 @@ async function listLiveLocations() {
   });
 }
 
-async function listLocationHistory() {
-  return prisma.location.findMany({
-    include: {
-      tukTuk: {
-        include: {
-          policeStation: {
-            include: {
-              district: {
-                include: {
-                  province: true,
+async function listLocationHistory({ provinceId, districtId, tukTukId, page, limit }) {
+  const pagination = parsePagination(page, limit);
+  const where = buildLocationWhere({ provinceId, districtId, tukTukId });
+
+  const [total, locations] = await Promise.all([
+    prisma.location.count({ where }),
+    prisma.location.findMany({
+      where,
+      include: {
+        tukTuk: {
+          include: {
+            policeStation: {
+              include: {
+                district: {
+                  include: {
+                    province: true,
+                  },
                 },
               },
             },
           },
         },
       },
+      orderBy: {
+        createdAt: 'desc',
+      },
+      skip: pagination.skip,
+      take: pagination.take,
+    }),
+  ]);
+
+  return {
+    data: locations,
+    pagination: {
+      page: pagination.page,
+      limit: pagination.limit,
+      total,
+      totalPages: Math.max(Math.ceil(total / pagination.limit), 1),
     },
-    orderBy: {
-      createdAt: 'desc',
-    },
-  });
+  };
 }
 
 module.exports = {
