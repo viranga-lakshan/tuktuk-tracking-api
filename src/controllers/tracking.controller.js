@@ -47,7 +47,12 @@ async function getTukTuksHandler(_req, res, next) {
 
 async function createLocationHandler(req, res, next) {
   try {
-    const { tukTukId, latitude, longitude, recordedAt } = req.body;
+    let { tukTukId, latitude, longitude, recordedAt } = req.body;
+
+    // Allow device authentication to override tukTukId
+    if (req.device) {
+      tukTukId = req.tukTukId;
+    }
 
     if (!tukTukId || latitude === undefined || longitude === undefined) {
       return res.status(400).json({

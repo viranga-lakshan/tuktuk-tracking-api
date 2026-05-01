@@ -69,11 +69,26 @@ model TukTuk {
   policeStationId   Int
   policeStation     PoliceStation   @relation(fields: [policeStationId], references: [id])
   locations         Location[]
+  devices           Device[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([policeStationId])
+}
+
+model Device {
+  id        Int      @id @default(autoincrement())
+  name      String
+  apiKey    String   @unique
+  tukTukId  Int
+  tukTuk    TukTuk   @relation(fields: [tukTukId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([apiKey])
+  @@index([tukTukId])
 }
 
 model Location {
