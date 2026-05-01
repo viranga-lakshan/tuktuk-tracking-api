@@ -1,7 +1,7 @@
 const request = require('supertest');
 const jwt = require('jsonwebtoken');
-const createApp = require('../../src/app');
-const prisma = require('../../src/config/prisma');
+const createApp = require('../src/app');
+const prisma = require('../src/config/prisma');
 
 describe('Role-Based Access Control (RBAC) and District Scoping', () => {
   let app;

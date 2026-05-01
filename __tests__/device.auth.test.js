@@ -1,7 +1,7 @@
 const request = require('supertest');
 const jwt = require('jsonwebtoken');
-const createApp = require('../../src/app');
-const prisma = require('../../src/config/prisma');
+const createApp = require('../src/app');
+const prisma = require('../src/config/prisma');
 
 // Mock prisma - in a real test, use jest.mock() and setup test DB
 // For now, this is a reference implementation

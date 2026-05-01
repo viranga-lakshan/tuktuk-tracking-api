@@ -45,6 +45,23 @@ const policeStationRules = [
   body('address').optional().trim(),
 ];
 
+const deviceCreateRules = [
+  body('name').trim().notEmpty().withMessage('name is required'),
+  body('tukTukId').notEmpty().isInt().withMessage('tukTukId is required and must be integer'),
+];
+
+const idParamRule = [
+  param('id').isInt().withMessage('id must be an integer'),
+];
+
+const listFilterRules = [
+  query('provinceId').optional().isInt().withMessage('provinceId must be integer'),
+  query('districtId').optional().isInt().withMessage('districtId must be integer'),
+  query('tukTukId').optional().isInt().withMessage('tukTukId must be integer'),
+  query('page').optional().isInt({ min: 1 }).withMessage('page must be integer >= 1'),
+  query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('limit must be integer between 1 and 100'),
+];
+
 module.exports = {
   validate,
   authRegisterRules,
@@ -52,4 +69,7 @@ module.exports = {
   locationRules,
   tukTukRules,
   policeStationRules,
+  deviceCreateRules,
+  idParamRule,
+  listFilterRules,
 };
