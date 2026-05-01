@@ -20,7 +20,7 @@ async function createTukTukHandler(req, res, next) {
       registrationNumber,
       policeStationId,
       name,
-    });
+    }, req.user);
 
     return res.status(201).json({
       message: 'TukTuk created successfully',
@@ -33,7 +33,7 @@ async function createTukTukHandler(req, res, next) {
 
 async function getTukTuksHandler(_req, res, next) {
   try {
-    const result = await listTukTuks(_req.query);
+    const result = await listTukTuks(_req.query, _req.user);
 
     return res.status(200).json({
       message: 'TukTuks fetched successfully',
@@ -65,7 +65,7 @@ async function createLocationHandler(req, res, next) {
       latitude: Number(latitude),
       longitude: Number(longitude),
       recordedAt,
-    });
+    }, req.user);
 
     return res.status(201).json({
       message: 'Location recorded successfully',
@@ -78,7 +78,7 @@ async function createLocationHandler(req, res, next) {
 
 async function getLiveLocationsHandler(_req, res, next) {
   try {
-    const locations = await listLiveLocations(_req.query);
+    const locations = await listLiveLocations(_req.query, _req.user);
 
     return res.status(200).json({
       message: 'Live locations fetched successfully',
@@ -91,7 +91,7 @@ async function getLiveLocationsHandler(_req, res, next) {
 
 async function getLocationHistoryHandler(_req, res, next) {
   try {
-    const result = await listLocationHistory(_req.query);
+    const result = await listLocationHistory(_req.query, _req.user);
 
     return res.status(200).json({
       message: 'Location history fetched successfully',

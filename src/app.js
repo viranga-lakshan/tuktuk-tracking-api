@@ -9,6 +9,7 @@ const swaggerDocument = require('./config/swagger');
 const statusRoutes = require('./routes/status.routes');
 const trackingRoutes = require('./routes/tracking.routes');
 const deviceRoutes = require('./routes/device.routes');
+const policeStationRoutes = require('./routes/policestation.routes');
 const { errorHandler } = require('./middleware/error.middleware');
 const { notFoundHandler } = require('./middleware/not-found.middleware');
 const { apiLimiter, authLimiter, locationLimiter } = require('./middleware/rate-limit.middleware');
@@ -36,6 +37,7 @@ function createApp() {
   app.use('/api', statusRoutes);
   app.use('/auth', authLimiter, authRoutes);
   app.use('/devices', deviceRoutes);
+  app.use('/policestations', policeStationRoutes);
   app.use('/', locationLimiter, trackingRoutes);
 
   // Error handling

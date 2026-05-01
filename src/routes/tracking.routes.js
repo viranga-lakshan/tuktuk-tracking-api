@@ -7,13 +7,14 @@ const {
   getLocationHistoryHandler,
   getTukTuksHandler,
 } = require('../controllers/tracking.controller');
-const { authenticateToken } = require('../middleware/auth.middleware');
+const { authenticateToken, authorizeRoles } = require('../middleware/auth.middleware');
 const { authenticateDevice } = require('../middleware/device.middleware');
+const { validate, locationRules, tukTukRules } = require('../middleware/validation.middleware');
 
 const router = express.Router();
 
-router.post('/tuktuks', authenticateToken, createTukTukHandler);
-router.get('/tuktuks', authenticateToken, getTukTuksHandler);
+router.post('/tuktuks', authenticateToken, authorizeRoles('ADMIN','POLICE'), validate(tukTukRules), createTukTukHandler);
+router.get('/tuktuks', authenticateToken, authorizeRoles('ADMIN','POLICE'), getTukTuksHandler);
 router.post('/locations', (req, res, next) => {
   const apiKey = req.headers['x-api-key'];
   if (apiKey) {
@@ -21,8 +22,8 @@ router.post('/locations', (req, res, next) => {
   } else {
     authenticateToken(req, res, next);
   }
-}, createLocationHandler);
-router.get('/locations/live', authenticateToken, getLiveLocationsHandler);
-router.get('/locations/history', authenticateToken, getLocationHistoryHandler);
+}, validate(locationRules), createLocationHandler);
+router.get('/locations/live', authenticateToken, authorizeRoles('ADMIN','POLICE'), getLiveLocationsHandler);
+router.get('/locations/history', authenticateToken, authorizeRoles('ADMIN','POLICE'), getLocationHistoryHandler);
 
 module.exports = router;

@@ -2,7 +2,7 @@ const { loginUser, registerUser } = require('../services/auth.service');
 
 async function register(req, res, next) {
   try {
-    const { name, email, password, role } = req.body;
+    const { name, email, password, role, districtId } = req.body;
 
     if (!name || !email || !password) {
       return res.status(400).json({
@@ -10,7 +10,12 @@ async function register(req, res, next) {
       });
     }
 
-    const result = await registerUser({ name, email, password, role });
+    // If role is POLICE, require districtId
+    if (role === 'POLICE' && !districtId) {
+      return res.status(400).json({ message: 'districtId is required for POLICE users' });
+    }
+
+    const result = await registerUser({ name, email, password, role, districtId });
 
     return res.status(201).json({
       message: 'User registered successfully',

@@ -13,6 +13,7 @@ function mapUser(user) {
     name: user.name,
     email: user.email,
     role: user.role,
+    districtId: user.districtId || null,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
   };
@@ -24,13 +25,14 @@ function signToken(user) {
       userId: user.id,
       email: user.email,
       role: user.role,
+      districtId: user.districtId || null,
     },
     JWT_SECRET,
     { expiresIn: JWT_EXPIRES_IN }
   );
 }
 
-async function registerUser({ name, email, password, role }) {
+async function registerUser({ name, email, password, role, districtId }) {
   const existingUser = await prisma.user.findUnique({ where: { email } });
 
   if (existingUser) {
@@ -47,6 +49,7 @@ async function registerUser({ name, email, password, role }) {
       email,
       password: hashedPassword,
       role,
+      districtId: districtId ? Number(districtId) : null,
     },
   });
 
