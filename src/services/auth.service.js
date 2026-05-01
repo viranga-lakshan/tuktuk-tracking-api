@@ -4,7 +4,7 @@ const jwt = require('jsonwebtoken');
 const prisma = require('../config/prisma');
 
 const SALT_ROUNDS = 10;
-const JWT_SECRET = process.env.JWT_SECRET || 'tuktuk-dev-secret';
+const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
 
 function mapUser(user) {
