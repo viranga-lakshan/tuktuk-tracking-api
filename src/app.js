@@ -10,6 +10,8 @@ const statusRoutes = require('./routes/status.routes');
 const trackingRoutes = require('./routes/tracking.routes');
 const deviceRoutes = require('./routes/device.routes');
 const policeStationRoutes = require('./routes/policestation.routes');
+const { verifyApiKeyHeader } = require('./middleware/device.middleware');
+const { auditMiddleware } = require('./middleware/audit.middleware');
 const { errorHandler } = require('./middleware/error.middleware');
 const { notFoundHandler } = require('./middleware/not-found.middleware');
 const { apiLimiter, authLimiter, locationLimiter } = require('./middleware/rate-limit.middleware');
@@ -26,6 +28,33 @@ function createApp() {
   
   // Body parser
   app.use(express.json());
+
+  // Audit logging middleware
+  app.use(auditMiddleware);
+
+  // If a client provides an `x-api-key`, authenticate it here and restrict
+  // devices so they can only call POST /locations. This prevents devices
+  // from accessing other endpoints.
+  app.use(async (req, res, next) => {
+    const apiKeyHeader = req.headers['x-api-key'];
+    if (!apiKeyHeader) return next();
+    try {
+      const device = await verifyApiKeyHeader(apiKeyHeader);
+      req.device = device;
+      req.principal = { type: 'DEVICE', deviceId: device.id, tukTukId: device.tukTukId };
+
+      // Allow only POST /locations for devices
+      const path = req.path || req.originalUrl || '';
+      if (!(req.method === 'POST' && path.startsWith('/locations'))) {
+        return res.status(403).json({ error: 'Devices may only POST /locations' });
+      }
+
+      return next();
+    } catch (err) {
+      const status = err.statusCode || 401;
+      return res.status(status).json({ error: err.message });
+    }
+  });
   
   // Rate limiting - apply general limiter to all requests
   app.use(apiLimiter);

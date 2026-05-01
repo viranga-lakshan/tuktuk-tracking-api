@@ -8,4 +8,8 @@ router.get('/', authenticateToken, authorizeRoles('ADMIN'), controller.listDevic
 router.get('/:id', authenticateToken, authorizeRoles('ADMIN'), controller.getDeviceById);
 router.delete('/:id', authenticateToken, authorizeRoles('ADMIN'), controller.deleteDevice);
 
+// Key lifecycle endpoints
+router.post('/:id/rotate', authenticateToken, authorizeRoles('ADMIN'), controller.rotateDevice);
+router.post('/:id/revoke', authenticateToken, authorizeRoles('ADMIN'), controller.revokeDevice);
+
 module.exports = router;

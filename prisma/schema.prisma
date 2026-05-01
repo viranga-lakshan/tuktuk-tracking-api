@@ -82,14 +82,17 @@ model TukTuk {
 model Device {
   id        Int      @id @default(autoincrement())
   name      String
-  apiKey    String   @unique
+  keyId     String   @unique
+  secretHash String
   tukTukId  Int
   tukTuk    TukTuk   @relation(fields: [tukTukId], references: [id])
+  isRevoked Boolean  @default(false)
+  rotatedAt DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@index([apiKey])
+  @@index([keyId])
   @@index([tukTukId])
 }
 

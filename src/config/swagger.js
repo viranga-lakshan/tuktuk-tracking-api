@@ -18,6 +18,12 @@ const swaggerDocument = {
         scheme: 'bearer',
         bearerFormat: 'JWT',
       },
+      xApiKey: {
+        type: 'apiKey',
+        in: 'header',
+        name: 'x-api-key',
+        description: 'Device API key in format <keyId>.<secret>',
+      },
     },
     schemas: {
       RegisterRequest: {
@@ -173,7 +179,7 @@ const swaggerDocument = {
       post: {
         summary: 'Record location',
         tags: ['Location'],
-        security: [{ bearerAuth: [] }],
+        security: [{ bearerAuth: [] }, { xApiKey: [] }],
         requestBody: {
           required: true,
           content: {
@@ -186,6 +192,50 @@ const swaggerDocument = {
           201: { description: 'Location recorded' },
           404: { description: 'TukTuk not found' },
         },
+      },
+    },
+    '/devices': {
+      post: {
+        summary: 'Create device (ADMIN)',
+        tags: ['Device'],
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['name', 'tukTukId'],
+                properties: {
+                  name: { type: 'string', example: 'GPS Sensor 1' },
+                  tukTukId: { type: 'integer', example: 1 },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          201: { description: 'Device created — apiKey returned once' },
+          400: { description: 'Validation error' },
+        },
+      },
+    },
+    '/devices/{id}/rotate': {
+      post: {
+        summary: 'Rotate device key (ADMIN)',
+        tags: ['Device'],
+        security: [{ bearerAuth: [] }],
+        parameters: [{ in: 'path', name: 'id', required: true, schema: { type: 'integer' } }],
+        responses: { 200: { description: 'New apiKey returned once' }, 404: { description: 'Device not found' } },
+      },
+    },
+    '/devices/{id}/revoke': {
+      post: {
+        summary: 'Revoke device key (ADMIN)',
+        tags: ['Device'],
+        security: [{ bearerAuth: [] }],
+        parameters: [{ in: 'path', name: 'id', required: true, schema: { type: 'integer' } }],
+        responses: { 200: { description: 'Device key revoked' }, 404: { description: 'Device not found' } },
       },
     },
     '/locations/live': {
