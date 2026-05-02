@@ -1,0 +1,5 @@
+{"timestamp":"2026-05-02T17:08:29.645Z","actor":"uththara@gmail.com","action":"DEVICE_CREATED","details":{"deviceId":3,"name":"GPS unit 1","tukTukId":407}}
+{"timestamp":"2026-05-02T17:22:29.624Z","actor":"uththara@gmail.com","action":"DEVICE_CREATED","details":{"deviceId":4,"name":"GPS unit 1","tukTukId":407}}
+{"timestamp":"2026-05-02T17:30:35.786Z","actor":"uththara@gmail.com","action":"DEVICE_CREATED","details":{"deviceId":5,"name":"GPS unit 1","tukTukId":407}}
+{"timestamp":"2026-05-02T17:31:33.229Z","actor":"uththara@gmail.com","action":"DEVICE_DELETED","details":{"deviceId":5}}
+{"timestamp":"2026-05-02T17:32:06.458Z","actor":"uththara@gmail.com","action":"DEVICE_CREATED","details":{"deviceId":6,"name":"GPS unit 1","tukTukId":407}}

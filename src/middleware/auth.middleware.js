@@ -1,5 +1,7 @@
 const jwt = require('jsonwebtoken');
 
+const { isJtiRevoked } = require('../utils/revoked-jwt');
+
 const JWT_SECRET = process.env.JWT_SECRET;
 
 function authenticateToken(req, res, next) {
@@ -13,6 +15,9 @@ function authenticateToken(req, res, next) {
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
+    if (decoded.jti && isJtiRevoked(decoded.jti)) {
+      return res.status(401).json({ message: 'Token has been revoked' });
+    }
     req.user = {
       ...decoded,
       id: decoded.userId,

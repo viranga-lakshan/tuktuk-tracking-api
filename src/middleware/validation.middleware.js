@@ -53,6 +53,10 @@ const idParamRule = [
   param('id').isInt().withMessage('id must be an integer'),
 ];
 
+const tukTukIdParamRule = [
+  param('tukTukId').isInt().withMessage('tukTukId must be an integer'),
+];
+
 const listFilterRules = [
   query('provinceId').optional().isInt().withMessage('provinceId must be integer'),
   query('districtId').optional().isInt().withMessage('districtId must be integer'),
@@ -101,6 +105,7 @@ module.exports = {
   policeStationRules,
   deviceCreateRules,
   idParamRule,
+  tukTukIdParamRule,
   listFilterRules,
   userListFilterRules,
   userCreateRules,

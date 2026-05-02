@@ -44,7 +44,13 @@ async function deleteDevice(req, res, next) {
     const { id } = req.params;
     const deleted = await deviceService.deleteDevice(id);
     if (!deleted) return res.status(404).json({ error: 'Device not found' });
-    return res.status(204).send();
+    if (req.audit) {
+      req.audit('DEVICE_DELETED', { deviceId: Number(id) });
+    }
+    return res.status(200).json({
+      message: 'Device deleted successfully',
+      deviceId: Number(id),
+    });
   } catch (err) {
     next(err);
   }

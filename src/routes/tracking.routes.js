@@ -4,7 +4,9 @@ const {
   createLocationHandler,
   createTukTukHandler,
   deleteTukTukHandler,
+  getLiveLocationByTukTukIdHandler,
   getLiveLocationsHandler,
+  getLocationHistoryByTukTukIdHandler,
   getLocationHistoryHandler,
   getTukTukByIdHandler,
   getTukTuksHandler,
@@ -18,6 +20,7 @@ const {
   tukTukRules,
   tukTukUpdateRules,
   listFilterRules,
+  tukTukIdParamRule,
 } = require('../middleware/validation.middleware');
 const { ADMIN_ROLES, ALL_HUMAN_ROLES } = require('../constants/roles');
 
@@ -35,7 +38,23 @@ router.post('/locations', (req, res, next) => {
 
   return authenticateToken(req, res, next);
 }, validate(locationRules), createLocationHandler);
+// GET /locations is the same as GET /locations/live (latest point per tuk-tuk)
+router.get('/locations', authenticateToken, authorizeRoles(...ALL_HUMAN_ROLES), validate(listFilterRules), getLiveLocationsHandler);
+router.get(
+  '/locations/live/:tukTukId',
+  authenticateToken,
+  authorizeRoles(...ALL_HUMAN_ROLES),
+  validate(tukTukIdParamRule),
+  getLiveLocationByTukTukIdHandler
+);
 router.get('/locations/live', authenticateToken, authorizeRoles(...ALL_HUMAN_ROLES), validate(listFilterRules), getLiveLocationsHandler);
+router.get(
+  '/locations/history/:tukTukId',
+  authenticateToken,
+  authorizeRoles(...ALL_HUMAN_ROLES),
+  validate([...tukTukIdParamRule, ...listFilterRules]),
+  getLocationHistoryByTukTukIdHandler
+);
 router.get('/locations/history', authenticateToken, authorizeRoles(...ALL_HUMAN_ROLES), validate(listFilterRules), getLocationHistoryHandler);
 
 module.exports = router;

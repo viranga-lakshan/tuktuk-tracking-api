@@ -27,8 +27,15 @@ function createApp() {
   // Logging
   app.use(morgan('dev'));
   
-  // Body parser
-  app.use(express.json());
+  // Body parser — skip JSON parse on GET/HEAD so clients sending
+  // Content-Type: application/json with an empty body (common in Postman) do not crash.
+  const jsonParser = express.json();
+  app.use((req, res, next) => {
+    if (req.method === 'GET' || req.method === 'HEAD') {
+      return next();
+    }
+    return jsonParser(req, res, next);
+  });
 
   // Audit logging middleware
   app.use(auditMiddleware);
@@ -42,6 +49,7 @@ function createApp() {
     try {
       const device = await verifyApiKeyHeader(apiKeyHeader);
       req.device = device;
+      req.tukTukId = device.tukTukId;
       req.principal = { type: 'DEVICE', deviceId: device.id, tukTukId: device.tukTukId };
 
       // Allow only POST /locations for devices

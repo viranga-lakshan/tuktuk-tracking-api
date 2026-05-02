@@ -1,3 +1,4 @@
+const { randomUUID } = require('crypto');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
@@ -29,6 +30,7 @@ function signToken(user) {
       provinceId: user.provinceId ?? null,
       districtId: user.districtId ?? null,
       stationId: user.stationId ?? null,
+      jti: randomUUID(),
     },
     JWT_SECRET,
     { expiresIn: JWT_EXPIRES_IN }

@@ -2,6 +2,8 @@ const {
   createLocation,
   createTukTuk,
   deleteTukTuk,
+  getLiveLocationForTukTuk,
+  getLocationHistoryForTukTuk,
   getTukTukById,
   listLiveLocations,
   listLocationHistory,
@@ -130,9 +132,36 @@ async function getLiveLocationsHandler(_req, res, next) {
   }
 }
 
+async function getLiveLocationByTukTukIdHandler(req, res, next) {
+  try {
+    const data = await getLiveLocationForTukTuk(req.params.tukTukId, req.user);
+
+    return res.status(200).json({
+      message: 'Live location fetched successfully',
+      data,
+    });
+  } catch (error) {
+    return next(error);
+  }
+}
+
 async function getLocationHistoryHandler(_req, res, next) {
   try {
     const result = await listLocationHistory(_req.query, _req.user);
+
+    return res.status(200).json({
+      message: 'Location history fetched successfully',
+      data: result.data,
+      pagination: result.pagination,
+    });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+async function getLocationHistoryByTukTukIdHandler(req, res, next) {
+  try {
+    const result = await getLocationHistoryForTukTuk(req.params.tukTukId, req.query, req.user);
 
     return res.status(200).json({
       message: 'Location history fetched successfully',
@@ -148,7 +177,9 @@ module.exports = {
   createLocationHandler,
   createTukTukHandler,
   deleteTukTukHandler,
+  getLiveLocationByTukTukIdHandler,
   getLiveLocationsHandler,
+  getLocationHistoryByTukTukIdHandler,
   getLocationHistoryHandler,
   getTukTukByIdHandler,
   getTukTuksHandler,

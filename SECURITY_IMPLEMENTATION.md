@@ -30,9 +30,10 @@ model Device {
 ```
 
 ### 3. **Device Lifecycle Endpoints**
-- **POST /devices** (ADMIN) - Create device, returns raw `apiKey` once
-- **POST /devices/:id/rotate** (ADMIN) - Rotate key, returns new raw `apiKey` once
-- **POST /devices/:id/revoke** (ADMIN) - Revoke key, permanently blocks access
+- **POST /devices** (`ADMIN_ROLES`: `ADMIN`, `SUPER_ADMIN`, `PROVINCE_ADMIN`, `DISTRICT_ADMIN`, `STATION_ADMIN`) — Create device, returns raw `apiKey` once
+- **POST /devices/:id/rotate** (same roles) — Rotate key, returns new raw `apiKey` once
+- **POST /devices/:id/revoke** (same roles) — Revoke key, blocks access
+- **DELETE /devices/:id** (same roles) — Remove device; audit `DEVICE_DELETED`
 
 ### 4. **Device Request Restriction**
 - Devices authenticated via `x-api-key` header can **ONLY** access `POST /locations`
@@ -40,17 +41,16 @@ model Device {
 - Global middleware enforces this restriction early in request pipeline
 
 ### 5. **Device Authentication Middleware**
-- `src/middleware/device.middleware.js`
+- `src/middleware/device.middleware.js` — `verifyApiKeyHeader`, optional `authenticateDevice`
+- `src/app.js` (global): when `x-api-key` is present, verifies device and sets **`req.device`**, **`req.tukTukId`**, and **`req.principal = { type: 'DEVICE', deviceId, tukTukId }`** so `POST /locations` can bind GPS to the device’s tuk-tuk without a body `tukTukId`
 - Validates header format: `x-api-key: <keyId>.<secret>`
-- Checks `isRevoked` flag (prevents revoked keys from use)
-- Uses `bcrypt.compare()` to verify secret
-- Sets `req.principal = { type: 'DEVICE', deviceId, tukTukId }`
+- Checks `isRevoked`; verifies secret with `bcrypt.compare()`
 
 ### 6. **Audit Logging**
-- `src/middleware/audit.middleware.js` - Logs all operations
-- Events tracked: `DEVICE_CREATED`, `DEVICE_KEY_ROTATED`, `DEVICE_KEY_REVOKED`
+- `src/middleware/audit.middleware.js` — attaches `req.audit(action, details)`
+- Events used in controllers: `DEVICE_CREATED`, `DEVICE_DELETED`, `DEVICE_KEY_ROTATED`, `DEVICE_KEY_REVOKED`
 - Format: JSON lines in `logs/audit.log`
-- Contains: timestamp, actor, action, details
+- Fields: timestamp, actor, action, details
 
 ### 7. **Test Suite**
 - `__tests__/device.auth.test.js` - Device authentication tests
@@ -68,19 +68,15 @@ npm install
 
 This installs Jest and Supertest for testing (already in devDependencies).
 
-### Step 2: Run Prisma Migration
-**CRITICAL**: This must be done before starting the server.
+### Step 2: Run Prisma Migrations
+**CRITICAL**: Apply migrations before starting the server.
 
 ```bash
-npx prisma migrate dev --name device_keyid_secrethash_isRevoked_rotatedAt
+npx prisma migrate deploy
 npx prisma generate
 ```
 
-Expected output:
-```
-✔ Your database has been successfully migrated
-✔ Generated Prisma Client to ./node_modules/@prisma/client
-```
+(Use `npx prisma migrate dev` in local development when creating new migrations.)
 
 ### Step 3: Seed Database (Optional)
 ```bash
@@ -94,9 +90,9 @@ This creates 9 provinces, 25 districts, 20 police stations, 200 tuk-tuks, and 1 
 npm start
 ```
 
-Expected output:
+Expected log line:
 ```
-listening on port 3000
+TukTuk Tracking API listening on port 3000
 ```
 
 ---
@@ -105,9 +101,9 @@ listening on port 3000
 
 ### Manual Testing
 
-#### 1. Create a Device (ADMIN only)
+#### 1. Create a Device (admin-tier JWT)
 
-**Step 1a**: Login as ADMIN
+**Step 1a**: Login as a user with an **`ADMIN_ROLES`** role (not `POLICE`)
 ```bash
 curl -X POST http://localhost:3000/auth/login \
   -H "Content-Type: application/json" \
@@ -205,10 +201,7 @@ npm test
 
 This runs all tests in `__tests__/` directory using Jest.
 
-**Current state**: Tests are reference implementations with commented-out assertions. To run real tests:
-1. Set up a test database
-2. Use test fixtures or seeding
-3. Uncomment assertions in test files
+**Current state**: Many cases in `__tests__` are structural or commented; `npm test` still runs the suite against your environment. For full integration tests, use a dedicated test DB and uncomment/extend assertions.
 
 ---
 
@@ -237,9 +230,9 @@ cat logs/audit.log | jq .
 - [x] Device requests restricted to `POST /locations` only
 - [x] `isRevoked` flag prevents revoked keys from use
 - [x] `rotatedAt` timestamp tracks key rotations
-- [x] `req.principal` set to `{ type: 'DEVICE', deviceId, tukTukId }`
-- [x] Audit logging for create/rotate/revoke
-- [x] RBAC enforced: ADMIN-only device management, POLICE scoped to district
+- [x] `req.principal` and `req.tukTukId` set for device requests (see `app.js`)
+- [x] Audit logging for device create/delete/rotate/revoke
+- [x] RBAC: device routes require `ADMIN_ROLES`; `POLICE` cannot manage devices
 - [x] Test structure in place (reference implementations)
 
 ---
@@ -290,11 +283,11 @@ npm start
 - `src/app.js` - Added audit middleware and device authenticator
 - `src/middleware/device.middleware.js` - Secure device auth with bcrypt
 - `src/services/device.service.js` - Key hashing, rotation, revocation
-- `src/controllers/device.controller.js` - Audit logging for operations
+- `src/controllers/device.controller.js` - Audit logging; delete returns JSON **200**
 - `src/routes/device.routes.js` - Added rotate/revoke endpoints
 - `src/config/swagger.js` - Documented device endpoints and x-api-key
-- `README.md` - Device API key lifecycle documentation
-- `package.json` - Added Jest/Supertest, updated test script
+- `README.md` - API overview and endpoint list
+- `package.json` - Jest / Supertest devDependencies; `npm test` script
 
 ### Created
 - `src/middleware/audit.middleware.js` - Audit logging middleware

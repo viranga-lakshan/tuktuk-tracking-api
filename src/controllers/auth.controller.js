@@ -1,4 +1,5 @@
 const { loginUser } = require('../services/auth.service');
+const { revokeJti } = require('../utils/revoked-jwt');
 
 async function login(req, res, next) {
   try {
@@ -35,8 +36,19 @@ function adminOnly(req, res) {
   });
 }
 
+function logout(req, res) {
+  const { jti, exp } = req.user || {};
+  if (jti && typeof exp === 'number') {
+    revokeJti(jti, exp);
+  }
+  return res.status(200).json({
+    message: 'Logged out successfully',
+  });
+}
+
 module.exports = {
   adminOnly,
   login,
+  logout,
   me,
 };

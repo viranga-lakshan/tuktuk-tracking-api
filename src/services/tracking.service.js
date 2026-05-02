@@ -411,6 +411,30 @@ async function listLiveLocations({
   });
 }
 
+/** Latest location row for one TukTuk (must be in user's scope). */
+async function getLiveLocationForTukTuk(tukTukId, user) {
+  await assertTukTukInScope(tukTukId, user);
+  const rows = await listLiveLocations({ tukTukId: Number(tukTukId) }, user);
+  if (!rows.length) {
+    const err = new Error('No location data for this TukTuk');
+    err.statusCode = 404;
+    throw err;
+  }
+  return rows[0];
+}
+
+/** Paginated location history for one TukTuk (must be in user's scope). */
+async function getLocationHistoryForTukTuk(tukTukId, query = {}, user) {
+  await assertTukTukInScope(tukTukId, user);
+  return listLocationHistory(
+    {
+      ...query,
+      tukTukId: Number(tukTukId),
+    },
+    user
+  );
+}
+
 async function listLocationHistory({
   provinceId, districtId, policeStationId, tukTukId, page, limit,
   recordedAtFrom, recordedAtTo,
@@ -468,6 +492,8 @@ module.exports = {
   createLocation,
   createTukTuk,
   deleteTukTuk,
+  getLiveLocationForTukTuk,
+  getLocationHistoryForTukTuk,
   getTukTukById,
   listLiveLocations,
   listLocationHistory,
