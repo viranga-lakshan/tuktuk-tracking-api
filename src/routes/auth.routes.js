@@ -4,19 +4,18 @@ const {
   adminOnly,
   login,
   me,
-  register,
 } = require('../controllers/auth.controller');
 const {
   authenticateToken,
   authorizeRoles,
 } = require('../middleware/auth.middleware');
-const { validate, authRegisterRules, authLoginRules } = require('../middleware/validation.middleware');
+const { validate, authLoginRules } = require('../middleware/validation.middleware');
+const { ADMIN_ROLES } = require('../constants/roles');
 
 const router = express.Router();
 
-router.post('/register', validate(authRegisterRules), register);
 router.post('/login', validate(authLoginRules), login);
 router.get('/me', authenticateToken, me);
-router.get('/admin', authenticateToken, authorizeRoles('ADMIN'), adminOnly);
+router.get('/admin', authenticateToken, authorizeRoles(...ADMIN_ROLES), adminOnly);
 
 module.exports = router;

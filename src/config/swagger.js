@@ -18,6 +18,7 @@ const swaggerDocument = {
     { name: 'Location' },
     { name: 'PoliceStation' },
     { name: 'Device' },
+    { name: 'Users' },
   ],
   components: {
     securitySchemes: {
@@ -58,8 +59,14 @@ const swaggerDocument = {
           id: { type: 'integer', example: 1 },
           name: { type: 'string', example: 'HQ Admin' },
           email: { type: 'string', format: 'email', example: 'admin@example.com' },
-          role: { type: 'string', enum: ['ADMIN', 'POLICE'], example: 'ADMIN' },
+          role: {
+            type: 'string',
+            example: 'SUPER_ADMIN',
+            description: 'ADMIN, SUPER_ADMIN, PROVINCE_ADMIN, DISTRICT_ADMIN, STATION_ADMIN, POLICE',
+          },
+          provinceId: { type: 'integer', nullable: true, example: null },
           districtId: { type: 'integer', nullable: true, example: null },
+          stationId: { type: 'integer', nullable: true, example: null },
           createdAt: { type: 'string', format: 'date-time' },
           updatedAt: { type: 'string', format: 'date-time' },
         },
@@ -72,15 +79,19 @@ const swaggerDocument = {
           password: { type: 'string', minLength: 8, example: 'Secret123!' },
         },
       },
-      RegisterRequest: {
+      UserCreateRequest: {
         type: 'object',
         required: ['name', 'email', 'password'],
+        description:
+          'Create a user via POST /users with Bearer token. Caller role must be allowed to create the target role (RBAC).',
         properties: {
-          name: { type: 'string', example: 'District Officer' },
-          email: { type: 'string', format: 'email', example: 'police@example.com' },
+          name: { type: 'string', example: 'Officer Name' },
+          email: { type: 'string', format: 'email', example: 'officer@example.com' },
           password: { type: 'string', minLength: 8, example: 'Secret123!' },
-          role: { type: 'string', enum: ['ADMIN', 'POLICE'], example: 'POLICE' },
-          districtId: { type: 'integer', example: 3, nullable: true },
+          role: { type: 'string', example: 'POLICE' },
+          provinceId: { type: 'integer', nullable: true },
+          districtId: { type: 'integer', nullable: true },
+          stationId: { type: 'integer', nullable: true },
         },
       },
       AuthResponse: {
@@ -216,38 +227,6 @@ const swaggerDocument = {
         },
       },
     },
-    '/auth/register': {
-      post: {
-        tags: ['Auth'],
-        summary: 'Register user',
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: { $ref: '#/components/schemas/RegisterRequest' },
-            },
-          },
-        },
-        responses: {
-          201: {
-            description: 'User registered',
-            content: {
-              'application/json': {
-                schema: { $ref: '#/components/schemas/AuthResponse' },
-              },
-            },
-          },
-          400: {
-            description: 'Validation error',
-            content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } },
-          },
-          409: {
-            description: 'Email already exists',
-            content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } },
-          },
-        },
-      },
-    },
     '/auth/login': {
       post: {
         tags: ['Auth'],
@@ -311,6 +290,49 @@ const swaggerDocument = {
         responses: {
           200: { description: 'Admin access granted' },
           403: { description: 'Forbidden' },
+        },
+      },
+    },
+    '/users': {
+      post: {
+        tags: ['Users'],
+        summary: 'Create user (authenticated; RBAC)',
+        description:
+          'Public self-registration is disabled. Use a JWT from an admin-tier account. Response returns created user only (no new token for the created user).',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/UserCreateRequest' },
+            },
+          },
+        },
+        responses: {
+          201: {
+            description: 'User created',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    message: { type: 'string' },
+                    user: { $ref: '#/components/schemas/User' },
+                  },
+                },
+              },
+            },
+          },
+          400: {
+            description: 'Validation error',
+            content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } },
+          },
+          401: { description: 'Unauthorized' },
+          403: { description: 'Forbidden (role cannot create target role or scope)' },
+          409: {
+            description: 'Email already exists',
+            content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } },
+          },
         },
       },
     },

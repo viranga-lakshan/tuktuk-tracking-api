@@ -10,6 +10,7 @@ const statusRoutes = require('./routes/status.routes');
 const trackingRoutes = require('./routes/tracking.routes');
 const deviceRoutes = require('./routes/device.routes');
 const policeStationRoutes = require('./routes/policestation.routes');
+const userRoutes = require('./routes/user.routes');
 const { verifyApiKeyHeader } = require('./middleware/device.middleware');
 const { auditMiddleware } = require('./middleware/audit.middleware');
 const { errorHandler } = require('./middleware/error.middleware');
@@ -65,6 +66,7 @@ function createApp() {
   // Routes
   app.use('/api', statusRoutes);
   app.use('/auth', authLimiter, authRoutes);
+  app.use('/users', userRoutes);
   app.use('/devices', deviceRoutes);
   app.use('/policestations', policeStationRoutes);
   app.use('/', locationLimiter, trackingRoutes);

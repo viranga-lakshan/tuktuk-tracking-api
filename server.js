@@ -1,6 +1,5 @@
 const { loadEnv } = require('./src/config/env');
 const { validateEnv } = require('./src/config/validation');
-const createApp = require('./src/app');
 
 loadEnv();
 
@@ -14,6 +13,7 @@ try {
 
 const port = Number(process.env.PORT) || 3000;
 const nodeEnv = process.env.NODE_ENV || 'development';
+const createApp = require('./src/app');
 const app = createApp();
 
 app.listen(port, () => {

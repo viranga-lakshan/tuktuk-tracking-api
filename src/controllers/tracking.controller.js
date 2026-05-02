@@ -1,9 +1,12 @@
 const {
   createLocation,
   createTukTuk,
+  deleteTukTuk,
+  getTukTukById,
   listLiveLocations,
   listLocationHistory,
   listTukTuks,
+  updateTukTuk,
 } = require('../services/tracking.service');
 
 async function createTukTukHandler(req, res, next) {
@@ -39,6 +42,44 @@ async function getTukTuksHandler(_req, res, next) {
       message: 'TukTuks fetched successfully',
       data: result.data,
       pagination: result.pagination,
+    });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+async function getTukTukByIdHandler(req, res, next) {
+  try {
+    const tukTuk = await getTukTukById(req.params.id, req.user);
+
+    return res.status(200).json({
+      message: 'TukTuk fetched successfully',
+      data: tukTuk,
+    });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+async function updateTukTukHandler(req, res, next) {
+  try {
+    const tukTuk = await updateTukTuk(req.params.id, req.body, req.user);
+
+    return res.status(200).json({
+      message: 'TukTuk updated successfully',
+      data: tukTuk,
+    });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+async function deleteTukTukHandler(req, res, next) {
+  try {
+    await deleteTukTuk(req.params.id, req.user);
+
+    return res.status(200).json({
+      message: 'TukTuk deleted successfully',
     });
   } catch (error) {
     return next(error);
@@ -106,7 +147,10 @@ async function getLocationHistoryHandler(_req, res, next) {
 module.exports = {
   createLocationHandler,
   createTukTukHandler,
+  deleteTukTukHandler,
   getLiveLocationsHandler,
   getLocationHistoryHandler,
+  getTukTukByIdHandler,
   getTukTuksHandler,
+  updateTukTukHandler,
 };

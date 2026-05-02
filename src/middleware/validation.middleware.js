@@ -1,4 +1,5 @@
 const { body, param, query, validationResult } = require('express-validator');
+const { ROLES } = require('../constants/roles');
 
 function validate(rules) {
   return [
@@ -12,14 +13,6 @@ function validate(rules) {
     },
   ];
 }
-
-const authRegisterRules = [
-  body('name').trim().notEmpty().withMessage('name is required'),
-  body('email').trim().isEmail().withMessage('valid email is required'),
-  body('password').isLength({ min: 8 }).withMessage('password must be at least 8 characters'),
-  body('role').optional().isIn(['ADMIN', 'POLICE']).withMessage('role must be ADMIN or POLICE'),
-  body('districtId').optional().isInt().withMessage('districtId must be integer'),
-];
 
 const authLoginRules = [
   body('email').trim().isEmail().withMessage('valid email is required'),
@@ -37,6 +30,12 @@ const tukTukRules = [
   body('registrationNumber').trim().notEmpty().withMessage('registrationNumber is required'),
   body('policeStationId').notEmpty().isInt().withMessage('policeStationId is required and must be integer'),
   body('name').optional().trim(),
+];
+
+const tukTukUpdateRules = [
+  body('registrationNumber').optional().trim().notEmpty().withMessage('registrationNumber cannot be empty'),
+  body('policeStationId').optional().isInt().withMessage('policeStationId must be integer'),
+  body('name').optional({ nullable: true }).trim(),
 ];
 
 const policeStationRules = [
@@ -57,19 +56,51 @@ const idParamRule = [
 const listFilterRules = [
   query('provinceId').optional().isInt().withMessage('provinceId must be integer'),
   query('districtId').optional().isInt().withMessage('districtId must be integer'),
+  query('policeStationId').optional().isInt().withMessage('policeStationId must be integer'),
   query('tukTukId').optional().isInt().withMessage('tukTukId must be integer'),
   query('page').optional().isInt({ min: 1 }).withMessage('page must be integer >= 1'),
   query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('limit must be integer between 1 and 100'),
 ];
 
+const userListFilterRules = [
+  query('provinceId').optional().isInt().withMessage('provinceId must be integer'),
+  query('districtId').optional().isInt().withMessage('districtId must be integer'),
+  query('stationId').optional().isInt().withMessage('stationId must be integer'),
+  query('page').optional().isInt({ min: 1 }).withMessage('page must be integer >= 1'),
+  query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('limit must be integer between 1 and 100'),
+];
+
+const userCreateRules = [
+  body('name').trim().notEmpty().withMessage('name is required'),
+  body('email').trim().isEmail().withMessage('valid email is required'),
+  body('password').isLength({ min: 8 }).withMessage('password must be at least 8 characters'),
+  body('role').optional().trim().isIn(ROLES).withMessage('invalid role'),
+  body('provinceId').optional({ nullable: true }).isInt().withMessage('provinceId must be integer'),
+  body('districtId').optional({ nullable: true }).isInt().withMessage('districtId must be integer'),
+  body('stationId').optional({ nullable: true }).isInt().withMessage('stationId must be integer'),
+];
+
+const userUpdateRules = [
+  body('name').optional().trim().notEmpty().withMessage('name cannot be empty'),
+  body('email').optional().trim().isEmail().withMessage('valid email is required'),
+  body('password').optional({ values: 'falsy' }).isLength({ min: 8 }).withMessage('password must be at least 8 characters'),
+  body('role').optional().trim().isIn(ROLES).withMessage('invalid role'),
+  body('provinceId').optional({ nullable: true }).isInt().withMessage('provinceId must be integer'),
+  body('districtId').optional({ nullable: true }).isInt().withMessage('districtId must be integer'),
+  body('stationId').optional({ nullable: true }).isInt().withMessage('stationId must be integer'),
+];
+
 module.exports = {
   validate,
-  authRegisterRules,
   authLoginRules,
   locationRules,
   tukTukRules,
+  tukTukUpdateRules,
   policeStationRules,
   deviceCreateRules,
   idParamRule,
   listFilterRules,
+  userListFilterRules,
+  userCreateRules,
+  userUpdateRules,
 };

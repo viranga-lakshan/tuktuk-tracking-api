@@ -1,4 +1,10 @@
 const prisma = require('../config/prisma');
+const {
+  mergeTukTukListWhere,
+  mergeLocationWhere,
+  loadTukTukWithStation,
+  userMayAccessTukTuk,
+} = require('../utils/scope');
 
 function parsePagination(page, limit) {
   const parsedPage = Math.max(Number(page) || 1, 1);
@@ -12,38 +18,22 @@ function parsePagination(page, limit) {
   };
 }
 
-function buildLocationWhere({ provinceId, districtId, tukTukId }) {
-  const where = {};
-
-  if (tukTukId) {
-    where.tukTukId = Number(tukTukId);
-  }
-
-  if (provinceId || districtId) {
-    where.tukTuk = {
-      policeStation: {
-        ...(districtId
-          ? {
-              districtId: Number(districtId),
-            }
-          : {}),
-        ...(provinceId
-          ? {
-              district: {
-                provinceId: Number(provinceId),
-              },
-            }
-          : {}),
+const tukTukInclude = {
+  policeStation: {
+    include: {
+      district: {
+        include: {
+          province: true,
+        },
       },
-    };
-  }
+    },
+  },
+};
 
-  return where;
-}
-
-async function createTukTuk({ registrationNumber, policeStationId, name }, user) {
+async function assertPoliceStationInScope(policeStationId, user) {
   const policeStation = await prisma.policeStation.findUnique({
     where: { id: Number(policeStationId) },
+    include: { district: true },
   });
 
   if (!policeStation) {
@@ -52,13 +42,49 @@ async function createTukTuk({ registrationNumber, policeStationId, name }, user)
     throw error;
   }
 
-  // If POLICE user, ensure the police station is in their district
-  if (user && user.role === 'POLICE' && user.districtId) {
-    if (Number(policeStation.districtId) !== Number(user.districtId)) {
-      const err = new Error('Forbidden: cannot create tukTuk outside your district');
-      err.statusCode = 403;
-      throw err;
-    }
+  if (!userMayAccessTukTuk(user, { policeStation })) {
+    const error = new Error('Forbidden: police station outside your scope');
+    error.statusCode = 403;
+    throw error;
+  }
+
+  return policeStation;
+}
+
+async function assertTukTukInScope(id, user) {
+  const tukTuk = await loadTukTukWithStation(prisma, id);
+
+  if (!tukTuk) {
+    const error = new Error('TukTuk not found');
+    error.statusCode = 404;
+    throw error;
+  }
+
+  if (!userMayAccessTukTuk(user, tukTuk)) {
+    const error = new Error('Forbidden: tukTuk not in your scope');
+    error.statusCode = 403;
+    throw error;
+  }
+
+  return tukTuk;
+}
+
+async function createTukTuk({ registrationNumber, policeStationId, name }, user) {
+  const policeStation = await prisma.policeStation.findUnique({
+    where: { id: Number(policeStationId) },
+    include: { district: true },
+  });
+
+  if (!policeStation) {
+    const error = new Error('Police station not found');
+    error.statusCode = 404;
+    throw error;
+  }
+
+  if (!userMayAccessTukTuk(user, { policeStation })) {
+    const err = new Error('Forbidden: cannot create tukTuk outside your scope');
+    err.statusCode = 403;
+    throw err;
   }
 
   const tukTuk = await prisma.tukTuk.create({
@@ -67,65 +93,82 @@ async function createTukTuk({ registrationNumber, policeStationId, name }, user)
       name,
       policeStationId: policeStation.id,
     },
-    include: {
-      policeStation: {
-        include: {
-          district: {
-            include: {
-              province: true,
-            },
-          },
-        },
-      },
-    },
+    include: tukTukInclude,
   });
 
   return tukTuk;
 }
 
-async function listTukTuks({ provinceId, districtId, page, limit } = {}, user) {
-  const pagination = parsePagination(page, limit);
-  const where = {
-    ...(districtId || provinceId
-      ? {
-          policeStation: {
-            ...(districtId
-              ? {
-                  districtId: Number(districtId),
-                }
-              : {}),
-            ...(provinceId
-              ? {
-                  district: {
-                    provinceId: Number(provinceId),
-                  },
-                }
-              : {}),
-          },
-        }
-      : {}),
-  };
+async function getTukTukById(id, user) {
+  const tukTuk = await assertTukTukInScope(id, user);
 
-  // If POLICE user, scope to their district
-  if (user && user.role === 'POLICE' && user.districtId) {
-    where.policeStation = where.policeStation || {};
-    where.policeStation = { ...(where.policeStation || {}), districtId: Number(user.districtId) };
+  return prisma.tukTuk.findUnique({
+    where: { id: tukTuk.id },
+    include: {
+      ...tukTukInclude,
+      locations: {
+        orderBy: {
+          createdAt: 'desc',
+        },
+        take: 1,
+      },
+      devices: {
+        select: {
+          id: true,
+          name: true,
+          keyId: true,
+          tukTukId: true,
+          isRevoked: true,
+          rotatedAt: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      },
+    },
+  });
+}
+
+async function updateTukTuk(id, { registrationNumber, policeStationId, name }, user) {
+  const tukTuk = await assertTukTukInScope(id, user);
+  const data = {};
+
+  if (registrationNumber !== undefined) data.registrationNumber = registrationNumber;
+  if (name !== undefined) data.name = name;
+
+  if (policeStationId !== undefined) {
+    const policeStation = await assertPoliceStationInScope(policeStationId, user);
+    data.policeStationId = policeStation.id;
   }
+
+  return prisma.tukTuk.update({
+    where: { id: tukTuk.id },
+    data,
+    include: tukTukInclude,
+  });
+}
+
+async function deleteTukTuk(id, user) {
+  const tukTuk = await assertTukTukInScope(id, user);
+
+  await prisma.$transaction([
+    prisma.location.deleteMany({ where: { tukTukId: tukTuk.id } }),
+    prisma.device.deleteMany({ where: { tukTukId: tukTuk.id } }),
+    prisma.tukTuk.delete({ where: { id: tukTuk.id } }),
+  ]);
+}
+
+async function listTukTuks({
+  provinceId, districtId, policeStationId, page, limit,
+} = {}, user) {
+  const pagination = parsePagination(page, limit);
+  const where = mergeTukTukListWhere(user, { provinceId, districtId, policeStationId });
 
   const [total, tukTuks] = await Promise.all([
     prisma.tukTuk.count({ where }),
     prisma.tukTuk.findMany({
       where,
       include: {
-        policeStation: {
-          include: {
-            district: {
-              include: {
-                province: true,
-              },
-            },
-          },
-        },
+        ...tukTukInclude,
         locations: {
           orderBy: {
             createdAt: 'desc',
@@ -153,23 +196,17 @@ async function listTukTuks({ provinceId, districtId, page, limit } = {}, user) {
 }
 
 async function createLocation({ tukTukId, latitude, longitude, recordedAt }, user) {
-  const tukTuk = await prisma.tukTuk.findUnique({
-    where: { id: Number(tukTukId) },
-  });
+  const tukTuk = await loadTukTukWithStation(prisma, tukTukId);
 
   if (!tukTuk) {
     const error = new Error('TukTuk not found');
     error.statusCode = 404;
     throw error;
   }
-  // If POLICE user, ensure tukTuk belongs to their district
-  if (user && user.role === 'POLICE' && user.districtId) {
-    const station = await prisma.policeStation.findUnique({ where: { id: tukTuk.policeStationId } });
-    if (!station || Number(station.districtId) !== Number(user.districtId)) {
-      const err = new Error('Forbidden: tukTuk not in your district');
-      err.statusCode = 403;
-      throw err;
-    }
+  if (user && !userMayAccessTukTuk(user, tukTuk)) {
+    const err = new Error('Forbidden: tukTuk not in your scope');
+    err.statusCode = 403;
+    throw err;
   }
   return prisma.location.create({
     data: {
@@ -184,14 +221,12 @@ async function createLocation({ tukTukId, latitude, longitude, recordedAt }, use
   });
 }
 
-async function listLiveLocations({ provinceId, districtId, tukTukId } = {}, user) {
-  const where = buildLocationWhere({ provinceId, districtId, tukTukId });
-
-  if (user && user.role === 'POLICE' && user.districtId) {
-    where.tukTuk = where.tukTuk || {};
-    where.tukTuk.policeStation = where.tukTuk.policeStation || {};
-    where.tukTuk.policeStation = { ...(where.tukTuk.policeStation || {}), districtId: Number(user.districtId) };
-  }
+async function listLiveLocations({
+  provinceId, districtId, policeStationId, tukTukId,
+} = {}, user) {
+  const where = mergeLocationWhere(user, {
+    provinceId, districtId, policeStationId, tukTukId,
+  });
 
   return prisma.location.findMany({
     where,
@@ -218,15 +253,13 @@ async function listLiveLocations({ provinceId, districtId, tukTukId } = {}, user
   });
 }
 
-async function listLocationHistory({ provinceId, districtId, tukTukId, page, limit } = {}, user) {
+async function listLocationHistory({
+  provinceId, districtId, policeStationId, tukTukId, page, limit,
+} = {}, user) {
   const pagination = parsePagination(page, limit);
-  const where = buildLocationWhere({ provinceId, districtId, tukTukId });
-
-  if (user && user.role === 'POLICE' && user.districtId) {
-    where.tukTuk = where.tukTuk || {};
-    where.tukTuk.policeStation = where.tukTuk.policeStation || {};
-    where.tukTuk.policeStation = { ...(where.tukTuk.policeStation || {}), districtId: Number(user.districtId) };
-  }
+  const where = mergeLocationWhere(user, {
+    provinceId, districtId, policeStationId, tukTukId,
+  });
 
   const [total, locations] = await Promise.all([
     prisma.location.count({ where }),
@@ -269,7 +302,10 @@ async function listLocationHistory({ provinceId, districtId, tukTukId, page, lim
 module.exports = {
   createLocation,
   createTukTuk,
+  deleteTukTuk,
+  getTukTukById,
   listLiveLocations,
   listLocationHistory,
   listTukTuks,
+  updateTukTuk,
 };
