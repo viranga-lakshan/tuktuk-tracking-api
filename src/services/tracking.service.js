@@ -18,6 +18,157 @@ function parsePagination(page, limit) {
   };
 }
 
+function parseOptionalQueryInt(value) {
+  if (value === undefined || value === null || value === '') return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+/** Ensure province / district / station query params form a valid chain (SUPER_ADMIN / ADMIN). */
+async function assertGeoFilterChainConsistency({ provinceId, districtId, policeStationId }) {
+  if (districtId != null && provinceId != null) {
+    const district = await prisma.district.findUnique({ where: { id: districtId } });
+    if (!district) {
+      const err = new Error('District not found');
+      err.statusCode = 404;
+      throw err;
+    }
+    if (Number(district.provinceId) !== Number(provinceId)) {
+      const err = new Error('districtId does not belong to the given provinceId');
+      err.statusCode = 400;
+      throw err;
+    }
+  }
+  if (policeStationId != null) {
+    const station = await prisma.policeStation.findUnique({
+      where: { id: policeStationId },
+      include: { district: true },
+    });
+    if (!station) {
+      const err = new Error('Police station not found');
+      err.statusCode = 404;
+      throw err;
+    }
+    if (districtId != null && Number(station.districtId) !== Number(districtId)) {
+      const err = new Error('policeStationId does not belong to the given districtId');
+      err.statusCode = 400;
+      throw err;
+    }
+    if (provinceId != null && Number(station.district.provinceId) !== Number(provinceId)) {
+      const err = new Error('policeStationId does not belong to the given provinceId');
+      err.statusCode = 400;
+      throw err;
+    }
+  }
+}
+
+/**
+ * Role-aware geographic filters for list endpoints. Mutually consistent IDs are AND-ed in mergeTukTukListWhere.
+ */
+async function resolveTukTukGeoFiltersForList(user, raw = {}) {
+  const provinceId = parseOptionalQueryInt(raw.provinceId);
+  const districtId = parseOptionalQueryInt(raw.districtId);
+  const policeStationId = parseOptionalQueryInt(raw.policeStationId);
+  const hasGeo = provinceId != null || districtId != null || policeStationId != null;
+
+  if (!user) {
+    const err = new Error('Unauthorized');
+    err.statusCode = 401;
+    throw err;
+  }
+
+  const { role } = user;
+
+  if (role === 'STATION_ADMIN' || role === 'POLICE') {
+    if (hasGeo) {
+      const err = new Error('Geographic filters are not available for your role');
+      err.statusCode = 400;
+      throw err;
+    }
+    return { provinceId: null, districtId: null, policeStationId: null };
+  }
+
+  if (role === 'DISTRICT_ADMIN') {
+    if (provinceId != null || districtId != null) {
+      const err = new Error('Only policeStationId is allowed as a geographic filter for your role');
+      err.statusCode = 400;
+      throw err;
+    }
+    if (policeStationId != null) {
+      const station = await prisma.policeStation.findUnique({
+        where: { id: policeStationId },
+        include: { district: true },
+      });
+      if (!station) {
+        const err = new Error('Police station not found');
+        err.statusCode = 404;
+        throw err;
+      }
+      if (Number(station.districtId) !== Number(user.districtId)) {
+        const err = new Error('Forbidden: police station outside your district');
+        err.statusCode = 403;
+        throw err;
+      }
+    }
+    return { provinceId: null, districtId: null, policeStationId };
+  }
+
+  if (role === 'PROVINCE_ADMIN') {
+    if (provinceId != null) {
+      const err = new Error('provinceId filter is not allowed for your role');
+      err.statusCode = 400;
+      throw err;
+    }
+    if (districtId != null) {
+      const district = await prisma.district.findUnique({ where: { id: districtId } });
+      if (!district) {
+        const err = new Error('District not found');
+        err.statusCode = 404;
+        throw err;
+      }
+      if (Number(district.provinceId) !== Number(user.provinceId)) {
+        const err = new Error('Forbidden: district outside your province');
+        err.statusCode = 403;
+        throw err;
+      }
+    }
+    if (policeStationId != null) {
+      const station = await prisma.policeStation.findUnique({
+        where: { id: policeStationId },
+        include: { district: true },
+      });
+      if (!station) {
+        const err = new Error('Police station not found');
+        err.statusCode = 404;
+        throw err;
+      }
+      if (Number(station.district.provinceId) !== Number(user.provinceId)) {
+        const err = new Error('Forbidden: police station outside your province');
+        err.statusCode = 403;
+        throw err;
+      }
+      if (districtId != null && Number(station.districtId) !== Number(districtId)) {
+        const err = new Error('policeStationId does not belong to the given districtId');
+        err.statusCode = 400;
+        throw err;
+      }
+    }
+    return { provinceId: null, districtId, policeStationId };
+  }
+
+  if (role === 'SUPER_ADMIN' || role === 'ADMIN') {
+    await assertGeoFilterChainConsistency({ provinceId, districtId, policeStationId });
+    return { provinceId, districtId, policeStationId };
+  }
+
+  if (hasGeo) {
+    const err = new Error('Geographic filters are not available for your role');
+    err.statusCode = 400;
+    throw err;
+  }
+  return { provinceId: null, districtId: null, policeStationId: null };
+}
+
 const tukTukInclude = {
   policeStation: {
     include: {
@@ -161,7 +312,10 @@ async function listTukTuks({
   provinceId, districtId, policeStationId, page, limit,
 } = {}, user) {
   const pagination = parsePagination(page, limit);
-  const where = mergeTukTukListWhere(user, { provinceId, districtId, policeStationId });
+  const geo = await resolveTukTukGeoFiltersForList(user, {
+    provinceId, districtId, policeStationId,
+  });
+  const where = mergeTukTukListWhere(user, geo);
 
   const [total, tukTuks] = await Promise.all([
     prisma.tukTuk.count({ where }),
@@ -224,8 +378,12 @@ async function createLocation({ tukTukId, latitude, longitude, recordedAt }, use
 async function listLiveLocations({
   provinceId, districtId, policeStationId, tukTukId,
 } = {}, user) {
+  const geo = await resolveTukTukGeoFiltersForList(user, {
+    provinceId, districtId, policeStationId,
+  });
   const where = mergeLocationWhere(user, {
-    provinceId, districtId, policeStationId, tukTukId,
+    ...geo,
+    tukTukId,
   });
 
   return prisma.location.findMany({
@@ -255,10 +413,17 @@ async function listLiveLocations({
 
 async function listLocationHistory({
   provinceId, districtId, policeStationId, tukTukId, page, limit,
+  recordedAtFrom, recordedAtTo,
 } = {}, user) {
   const pagination = parsePagination(page, limit);
+  const geo = await resolveTukTukGeoFiltersForList(user, {
+    provinceId, districtId, policeStationId,
+  });
   const where = mergeLocationWhere(user, {
-    provinceId, districtId, policeStationId, tukTukId,
+    ...geo,
+    tukTukId,
+    recordedAtFrom,
+    recordedAtTo,
   });
 
   const [total, locations] = await Promise.all([

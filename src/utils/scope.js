@@ -37,14 +37,16 @@ function mergeTukTukListWhere(user, { provinceId, districtId, policeStationId } 
 
   if (Object.keys(scope).length) and.push(scope);
 
-  if (policeStationId != null) {
-    and.push({ policeStationId: Number(policeStationId) });
-  } else if (districtId != null) {
-    and.push({ policeStation: { districtId: Number(districtId) } });
-  } else if (provinceId != null) {
+  if (provinceId != null) {
     and.push({
       policeStation: { district: { provinceId: Number(provinceId) } },
     });
+  }
+  if (districtId != null) {
+    and.push({ policeStation: { districtId: Number(districtId) } });
+  }
+  if (policeStationId != null) {
+    and.push({ policeStationId: Number(policeStationId) });
   }
 
   if (!and.length) return {};
@@ -68,16 +70,18 @@ function mergeLocationWhere(user, filters) {
 
   if (tukTukId != null) parts.push({ tukTukId: Number(tukTukId) });
 
-  if (policeStationId != null) {
-    parts.push({ tukTuk: { policeStationId: Number(policeStationId) } });
-  } else if (districtId != null) {
-    parts.push({ tukTuk: { policeStation: { districtId: Number(districtId) } } });
-  } else if (provinceId != null) {
+  if (provinceId != null) {
     parts.push({
       tukTuk: {
         policeStation: { district: { provinceId: Number(provinceId) } },
       },
     });
+  }
+  if (districtId != null) {
+    parts.push({ tukTuk: { policeStation: { districtId: Number(districtId) } } });
+  }
+  if (policeStationId != null) {
+    parts.push({ tukTuk: { policeStationId: Number(policeStationId) } });
   }
 
   const time = {};

@@ -58,6 +58,8 @@ const listFilterRules = [
   query('districtId').optional().isInt().withMessage('districtId must be integer'),
   query('policeStationId').optional().isInt().withMessage('policeStationId must be integer'),
   query('tukTukId').optional().isInt().withMessage('tukTukId must be integer'),
+  query('recordedAtFrom').optional().isISO8601().withMessage('recordedAtFrom must be ISO8601'),
+  query('recordedAtTo').optional().isISO8601().withMessage('recordedAtTo must be ISO8601'),
   query('page').optional().isInt({ min: 1 }).withMessage('page must be integer >= 1'),
   query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('limit must be integer between 1 and 100'),
 ];

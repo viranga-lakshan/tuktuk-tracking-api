@@ -359,10 +359,13 @@ const swaggerDocument = {
       get: {
         tags: ['TukTuk'],
         summary: 'List TukTuks with filters',
+        description:
+          'Geographic query params are AND-ed. SUPER_ADMIN/ADMIN: provinceId, districtId, policeStationId (must reference the same hierarchy). PROVINCE_ADMIN: districtId and/or policeStationId within their province only. DISTRICT_ADMIN: policeStationId within their district only. STATION_ADMIN and POLICE: geographic filters are not allowed.',
         security: [{ bearerAuth: [] }],
         parameters: [
           { in: 'query', name: 'provinceId', schema: { type: 'integer' } },
           { in: 'query', name: 'districtId', schema: { type: 'integer' } },
+          { in: 'query', name: 'policeStationId', schema: { type: 'integer' } },
           { in: 'query', name: 'page', schema: { type: 'integer', default: 1 } },
           { in: 'query', name: 'limit', schema: { type: 'integer', default: 20 } },
         ],
@@ -382,6 +385,9 @@ const swaggerDocument = {
               },
             },
           },
+          400: { description: 'Invalid geographic filter for role or inconsistent province/district/station' },
+          403: { description: 'Filter references data outside your administrative scope' },
+          404: { description: 'District or police station in filter not found' },
         },
       },
     },
@@ -443,14 +449,18 @@ const swaggerDocument = {
       get: {
         tags: ['Location'],
         summary: 'Get latest location per TukTuk',
+        description:
+          'Same geographic filter rules as GET /tuktuks (provinceId, districtId, policeStationId AND-ed where allowed by role).',
         security: [{ bearerAuth: [] }],
         parameters: [
           { in: 'query', name: 'provinceId', schema: { type: 'integer' } },
           { in: 'query', name: 'districtId', schema: { type: 'integer' } },
+          { in: 'query', name: 'policeStationId', schema: { type: 'integer' } },
           { in: 'query', name: 'tukTukId', schema: { type: 'integer' } },
         ],
         responses: {
           200: { description: 'Live locations fetched' },
+          400: { description: 'Invalid geographic filter for role' },
           401: { description: 'Unauthorized' },
         },
       },
@@ -459,16 +469,22 @@ const swaggerDocument = {
       get: {
         tags: ['Location'],
         summary: 'Get location history',
+        description:
+          'Same geographic filter rules as GET /tuktuks. Optional recordedAtFrom / recordedAtTo (ISO8601) narrow by time.',
         security: [{ bearerAuth: [] }],
         parameters: [
           { in: 'query', name: 'provinceId', schema: { type: 'integer' } },
           { in: 'query', name: 'districtId', schema: { type: 'integer' } },
+          { in: 'query', name: 'policeStationId', schema: { type: 'integer' } },
           { in: 'query', name: 'tukTukId', schema: { type: 'integer' } },
+          { in: 'query', name: 'recordedAtFrom', schema: { type: 'string', format: 'date-time' } },
+          { in: 'query', name: 'recordedAtTo', schema: { type: 'string', format: 'date-time' } },
           { in: 'query', name: 'page', schema: { type: 'integer', default: 1 } },
           { in: 'query', name: 'limit', schema: { type: 'integer', default: 20 } },
         ],
         responses: {
           200: { description: 'Location history fetched' },
+          400: { description: 'Invalid geographic filter for role' },
           401: { description: 'Unauthorized' },
         },
       },
