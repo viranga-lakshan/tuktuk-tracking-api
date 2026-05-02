@@ -5,7 +5,7 @@ async function createPoliceStation(req, res, next) {
     const body = req.body || {};
     if (!body.name || !body.districtId) return res.status(400).json({ error: 'name and districtId are required' });
 
-    const created = await policestationService.createPoliceStation(body);
+    const created = await policestationService.createPoliceStation(body, req.user);
     return res.status(201).json(created);
   } catch (err) {
     next(err);
@@ -36,7 +36,7 @@ async function updatePoliceStation(req, res, next) {
   try {
     const { id } = req.params;
     const body = req.body || {};
-    const updated = await policestationService.updatePoliceStation(id, body);
+    const updated = await policestationService.updatePoliceStation(id, body, req.user);
     if (!updated) return res.status(404).json({ error: 'PoliceStation not found' });
     return res.status(200).json(updated);
   } catch (err) {
@@ -47,7 +47,7 @@ async function updatePoliceStation(req, res, next) {
 async function deletePoliceStation(req, res, next) {
   try {
     const { id } = req.params;
-    const deleted = await policestationService.deletePoliceStation(id);
+    const deleted = await policestationService.deletePoliceStation(id, req.user);
     if (!deleted) return res.status(404).json({ error: 'PoliceStation not found' });
     return res.status(204).send();
   } catch (err) {

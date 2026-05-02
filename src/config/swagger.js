@@ -476,7 +476,7 @@ const swaggerDocument = {
     '/policestations': {
       post: {
         tags: ['PoliceStation'],
-        summary: 'Create police station (ADMIN)',
+        summary: 'Create police station (SUPER_ADMIN only)',
         security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
@@ -501,7 +501,7 @@ const swaggerDocument = {
       },
       get: {
         tags: ['PoliceStation'],
-        summary: 'List police stations',
+        summary: 'List police stations (SUPER_ADMIN only)',
         security: [{ bearerAuth: [] }],
         parameters: [
           { in: 'query', name: 'provinceId', schema: { type: 'integer' } },
@@ -512,23 +512,25 @@ const swaggerDocument = {
         responses: {
           200: { description: 'Police station list fetched' },
           401: { description: 'Unauthorized' },
+          403: { description: 'Forbidden' },
         },
       },
     },
     '/policestations/{id}': {
       get: {
         tags: ['PoliceStation'],
-        summary: 'Get police station by id',
+        summary: 'Get police station by id (SUPER_ADMIN only)',
         security: [{ bearerAuth: [] }],
         parameters: [{ in: 'path', name: 'id', required: true, schema: { type: 'integer' } }],
         responses: {
           200: { description: 'Police station fetched' },
+          403: { description: 'Forbidden' },
           404: { description: 'Not found' },
         },
       },
       put: {
         tags: ['PoliceStation'],
-        summary: 'Update police station (ADMIN)',
+        summary: 'Update police station (SUPER_ADMIN only)',
         security: [{ bearerAuth: [] }],
         parameters: [{ in: 'path', name: 'id', required: true, schema: { type: 'integer' } }],
         requestBody: {
@@ -548,7 +550,7 @@ const swaggerDocument = {
       },
       delete: {
         tags: ['PoliceStation'],
-        summary: 'Delete police station (ADMIN)',
+        summary: 'Delete police station (SUPER_ADMIN only)',
         security: [{ bearerAuth: [] }],
         parameters: [{ in: 'path', name: 'id', required: true, schema: { type: 'integer' } }],
         responses: {
