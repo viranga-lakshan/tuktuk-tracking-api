@@ -90,6 +90,16 @@ describe('Device Authentication and API Key Security', () => {
   });
 
   describe('Device Request Restriction (POST /locations only)', () => {
+    it('JWT alone must not POST /locations (device-only GPS ingest)', async () => {
+      const res = await request(app)
+        .post('/locations')
+        .set('Authorization', 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.invalid')
+        .send({ tukTukId: 1, latitude: 6.9271, longitude: 79.8612 });
+
+      expect(res.status).toBe(401);
+      expect(res.body.message).toMatch(/x-api-key/i);
+    });
+
     it('device should be able to POST /locations', async () => {
       // const res = await request(app)
       //   .post('/locations')

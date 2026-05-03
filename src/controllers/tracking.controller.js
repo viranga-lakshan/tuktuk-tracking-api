@@ -90,16 +90,12 @@ async function deleteTukTukHandler(req, res, next) {
 
 async function createLocationHandler(req, res, next) {
   try {
-    let { tukTukId, latitude, longitude, recordedAt } = req.body;
-
-    // Allow device authentication to override tukTukId
-    if (req.device) {
-      tukTukId = req.tukTukId;
-    }
+    const { latitude, longitude, recordedAt } = req.body;
+    const tukTukId = req.tukTukId;
 
     if (!tukTukId || latitude === undefined || longitude === undefined) {
       return res.status(400).json({
-        message: 'tukTukId, latitude, and longitude are required',
+        message: 'latitude and longitude are required (vehicle is bound to the device)',
       });
     }
 
@@ -108,7 +104,7 @@ async function createLocationHandler(req, res, next) {
       latitude: Number(latitude),
       longitude: Number(longitude),
       recordedAt,
-    }, req.user);
+    }, null);
 
     return res.status(201).json({
       message: 'Location recorded successfully',

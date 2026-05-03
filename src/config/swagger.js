@@ -2,9 +2,10 @@ const swaggerDocument = {
   openapi: '3.0.3',
   info: {
     title: 'TukTuk Tracking API',
-    version: '1.2.0',
+    version: '1.3.0',
     description:
-      'TukTuk tracking API: JWT for staff (RBAC), `x-api-key` for on-vehicle devices (POST /locations only). ' +
+      'TukTuk tracking API: JWT for staff (RBAC). `x-api-key` for on-vehicle devices — **only** `POST /locations` (staff cannot POST locations; GPS ingest is device-only). ' +
+      '`POST /tuktuks` is **admin-tier** only (`ADMIN_ROLES`); `POLICE` may list/read tuk-tuks in scope. ' +
       'Mounts: `/api` status, `/auth`, `/users`, `/devices`, `/policestations`, and tracking routes at root (`/tuktuks`, `/locations`).',
   },
   servers: [
@@ -185,7 +186,11 @@ const swaggerDocument = {
         type: 'object',
         required: ['latitude', 'longitude'],
         properties: {
-          tukTukId: { type: 'integer', example: 11, description: 'Optional when device key is used' },
+          tukTukId: {
+            type: 'integer',
+            example: 11,
+            description: 'Ignored for device POST; vehicle is always taken from the `x-api-key` binding.',
+          },
           latitude: { type: 'number', minimum: -90, maximum: 90, example: 6.9271 },
           longitude: { type: 'number', minimum: -180, maximum: 180, example: 79.8612 },
           recordedAt: { type: 'string', format: 'date-time' },
@@ -457,7 +462,8 @@ const swaggerDocument = {
       post: {
         tags: ['TukTuk'],
         summary: 'Create TukTuk',
-        description: 'All authenticated human roles; must not assign a station outside caller scope.',
+        description:
+          '`ADMIN_ROLES` only (not `POLICE`). Station must be inside caller geographic scope.',
         security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
@@ -470,7 +476,7 @@ const swaggerDocument = {
         responses: {
           201: { description: 'TukTuk created' },
           400: { description: 'Validation error' },
-          403: { description: 'POLICE district restriction violation' },
+          403: { description: 'Forbidden (e.g. `POLICE` or station outside scope)' },
           404: { description: 'Police station not found' },
         },
       },
@@ -580,29 +586,22 @@ const swaggerDocument = {
       },
       post: {
         tags: ['Location'],
-        summary: 'Record location (JWT or device x-api-key)',
-        description: 'Devices must use x-api-key and are restricted to this endpoint only.',
-        security: [{ bearerAuth: [] }, { xApiKey: [] }],
+        summary: 'Record location (device x-api-key only)',
+        description:
+          'Requires `x-api-key: <keyId>.<secret>`. Staff JWT is **not** accepted. Vehicle is inferred from the device record; body only needs coordinates (optional `recordedAt`).',
+        security: [{ xApiKey: [] }],
         requestBody: {
           required: true,
           content: {
             'application/json': {
               schema: { $ref: '#/components/schemas/CreateLocationRequest' },
               examples: {
-                jwtUserExample: {
-                  summary: 'JWT-based location update',
-                  value: {
-                    tukTukId: 11,
-                    latitude: 6.9271,
-                    longitude: 79.8612,
-                    recordedAt: '2026-05-01T09:30:00.000Z',
-                  },
-                },
                 deviceExample: {
-                  summary: 'Device location update with x-api-key',
+                  summary: 'Device location update',
                   value: {
                     latitude: 6.9278,
                     longitude: 79.8633,
+                    recordedAt: '2026-05-01T09:30:00.000Z',
                   },
                 },
               },
@@ -625,8 +624,7 @@ const swaggerDocument = {
             },
           },
           400: { description: 'Validation error' },
-          401: { description: 'Invalid API key or JWT' },
-          403: { description: 'POLICE district restriction violation' },
+          401: { description: 'Missing, malformed, or invalid `x-api-key`' },
           404: { description: 'TukTuk not found' },
         },
       },
