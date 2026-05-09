@@ -35,7 +35,18 @@ async function authenticateDevice(req, res, next) {
   }
 }
 
+/** POST /locations: only on-vehicle devices (after global x-api-key middleware sets req.device). */
+function requireDeviceForLocationPost(req, res, next) {
+  if (req.device && req.principal && req.principal.type === 'DEVICE') {
+    return next();
+  }
+  return res.status(401).json({
+    message: 'Location ingest requires a valid device x-api-key',
+  });
+}
+
 module.exports = {
   authenticateDevice,
+  requireDeviceForLocationPost,
   verifyApiKeyHeader,
 };

@@ -23,21 +23,16 @@ const {
   tukTukIdParamRule,
 } = require('../middleware/validation.middleware');
 const { ADMIN_ROLES, ALL_HUMAN_ROLES } = require('../constants/roles');
+const { requireDeviceForLocationPost } = require('../middleware/device.middleware');
 
 const router = express.Router();
 
-router.post('/tuktuks', authenticateToken, authorizeRoles(...ALL_HUMAN_ROLES), validate(tukTukRules), createTukTukHandler);
+router.post('/tuktuks', authenticateToken, authorizeRoles(...ADMIN_ROLES), validate(tukTukRules), createTukTukHandler);
 router.get('/tuktuks', authenticateToken, authorizeRoles(...ALL_HUMAN_ROLES), validate(listFilterRules), getTukTuksHandler);
 router.get('/tuktuks/:id', authenticateToken, authorizeRoles(...ALL_HUMAN_ROLES), validate(idParamRule), getTukTukByIdHandler);
 router.patch('/tuktuks/:id', authenticateToken, authorizeRoles(...ADMIN_ROLES), validate([...idParamRule, ...tukTukUpdateRules]), updateTukTukHandler);
 router.delete('/tuktuks/:id', authenticateToken, authorizeRoles(...ADMIN_ROLES), validate(idParamRule), deleteTukTukHandler);
-router.post('/locations', (req, res, next) => {
-  if (req.principal && req.principal.type === 'DEVICE') {
-    return next();
-  }
-
-  return authenticateToken(req, res, next);
-}, validate(locationRules), createLocationHandler);
+router.post('/locations', requireDeviceForLocationPost, validate(locationRules), createLocationHandler);
 // GET /locations is the same as GET /locations/live (latest point per tuk-tuk)
 router.get('/locations', authenticateToken, authorizeRoles(...ALL_HUMAN_ROLES), validate(listFilterRules), getLiveLocationsHandler);
 router.get(

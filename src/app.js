@@ -41,8 +41,7 @@ function createApp() {
   app.use(auditMiddleware);
 
   // If a client provides an `x-api-key`, authenticate it here and restrict
-  // devices so they can only call POST /locations. This prevents devices
-  // from accessing other endpoints.
+  // devices so they can only call POST /locations (GPS ingest is device-only).
   app.use(async (req, res, next) => {
     const apiKeyHeader = req.headers['x-api-key'];
     if (!apiKeyHeader) return next();
